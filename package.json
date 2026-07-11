@@ -1,0 +1,56 @@
+{
+  "name": "tbill",
+  "version": "1.0.0",
+  "description": "US Treasury bill yield math — discount rate ↔ price ↔ bond-equivalent yield (investment rate), money-market yield. Treasury's own formulas incl. the >182-day quadratic and Feb-29 year basis. Zero dependencies.",
+  "keywords": [
+    "tbill",
+    "treasury-bill",
+    "treasury",
+    "discount-rate",
+    "bond-equivalent-yield",
+    "investment-rate",
+    "money-market",
+    "yield",
+    "fixed-income",
+    "bills",
+    "finance",
+    "rates"
+  ],
+  "homepage": "https://moshemalka.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moshejs/tbill.git"
+  },
+  "bugs": "https://github.com/moshejs/tbill/issues",
+  "author": "Moshe Malka <hello@moshemalka.com> (https://moshemalka.com)",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

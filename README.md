@@ -1,9 +1,9 @@
-# tbill
+# treasury-bill-yield
 
 US Treasury **bill** yield math — convert between the **discount rate** (how bills are auctioned and quoted), the **price per $100**, and the **bond-equivalent yield** (the "investment rate" TreasuryDirect publishes). Zero dependencies.
 
 ```
-npm install tbill
+npm install treasury-bill-yield
 ```
 
 ## Why

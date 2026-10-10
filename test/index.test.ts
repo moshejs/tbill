@@ -5,9 +5,11 @@ import {
   daysToMaturity,
   discountFromPrice,
   moneyMarketYield,
+  priceFromBondEquivalentYield,
   priceFromDiscount,
   yearBasis,
 } from "../src/index.js";
+import { AUCTIONS as FISCAL_DATA } from "./fixtures.js";
 
 // Live TreasuryDirect auction records (fetched 2026-07-10). Each row is the
 // government's own published triple: high discount rate, price per 100, and
@@ -39,6 +41,56 @@ describe("reproduces TreasuryDirect's published auction results", () => {
     const quad = bondEquivalentYieldFromDays(96.097111, 364, 365);
     expect(quad).not.toBeCloseTo(simple, 5);
     expect(quad).toBeCloseTo(0.04032, 5);
+  });
+});
+
+describe("reproduces Fiscal Data auction records (test/fixtures.ts)", () => {
+  it(`matches price and investment rate for ${FISCAL_DATA.length} auctions`, () => {
+    for (const a of FISCAL_DATA) {
+      const days = daysToMaturity(a.issue, a.maturity);
+      const price = priceFromDiscount(a.discountPct / 100, days);
+      expect(Math.abs(price - a.price), `${a.cusip} ${a.issue} price`).toBeLessThan(5.1e-7);
+      const bey = bondEquivalentYield({ price: a.price, issueDate: a.issue, maturityDate: a.maturity });
+      expect(Math.round(bey * 100_000) / 1000, `${a.cusip} ${a.issue} investment rate`).toBe(
+        a.investmentPct,
+      );
+    }
+  });
+
+  it("183-day bill on a 366-day basis returns a number (was NaN)", () => {
+    // 912796Y52, issued 2024-01-04: published investment rate 5.264%
+    const bey = bondEquivalentYield({ price: 97.435458, issueDate: "2024-01-04", maturityDate: "2024-07-05" });
+    expect(bey).toBeCloseTo(0.05264, 5);
+    expect(bondEquivalentYieldFromDays(98, 183, 366)).toBeCloseTo((2 / 98) * 2, 12);
+  });
+
+  it("183-day bill on a 365-day basis uses the simple formula, like Treasury", () => {
+    // 912797SU2, issued 2026-05-28: published 3.771% (quadratic would give 3.770%)
+    const bey = bondEquivalentYieldFromDays(98.144583, 183, 365);
+    expect(Math.round(bey * 100_000) / 1000).toBe(3.771);
+  });
+
+  it("uses the quadratic past 183 days (191-day CMB 912795T92, issued 2008-10-20)", () => {
+    // Published 1.378%: quadratic 1.3782%, simple formula would give 1.3786% → 1.379
+    const bey = bondEquivalentYield({ price: 99.28375, issueDate: "2008-10-20", maturityDate: "2009-04-29" });
+    expect(Math.round(bey * 100_000) / 1000).toBe(1.378);
+  });
+});
+
+describe("priceFromBondEquivalentYield", () => {
+  it("inverts bondEquivalentYieldFromDays on both branches and bases", () => {
+    for (const basis of [365, 366] as const) {
+      for (const t of [28, 91, 182, 183, 184, 190, 364]) {
+        for (const p of [97, 98.144583, 99.99]) {
+          const i = bondEquivalentYieldFromDays(p, t, basis);
+          expect(priceFromBondEquivalentYield(i, t, basis)).toBeCloseTo(p, 10);
+        }
+      }
+    }
+  });
+
+  it("reproduces a published price from the investment rate", () => {
+    expect(priceFromBondEquivalentYield(0.04032, 364, 365)).toBeCloseTo(96.097111, 3);
   });
 });
 

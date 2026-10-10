@@ -7,7 +7,7 @@
  * comparable to coupon-bearing Treasuries).
  *
  * Rates are decimals (0.0383 for 3.83%). Formulas follow the US Treasury's
- * published price/yield conventions, including the >182-day quadratic and the
+ * published price/yield conventions, including the >183-day quadratic and the
  * Feb-29 year basis rule.
  */
 
@@ -123,11 +123,28 @@ export function moneyMarketYield(discountRate: number, days: number): number {
 }
 
 /**
+ * Longest term (in days) that uses the simple ("not more than one half-year")
+ * investment-rate formula: 183 days for both the 365- and 366-day basis.
+ *
+ * Treasury prices 183-day 26-week bills with the simple formula even on a
+ * 365-day basis (e.g. 912797SU2, issued 2026-05-28: published 3.771%, simple
+ * 3.7707%, quadratic 3.7705%), while longer bills (e.g. a 191-day CMB) use the
+ * quadratic. At exactly half the basis both formulas agree.
+ */
+const HALF_YEAR_DAYS = 183;
+
+function checkBasis(basis: number): void {
+  if (basis !== 365 && basis !== 366) {
+    throw new RangeError(`basis must be 365 or 366, got ${basis}`);
+  }
+}
+
+/**
  * Bond-equivalent yield ("investment rate") from price and term in days,
  * with an explicit year basis (365 or 366).
  *
- * - ≤ 182 days: simple — `((100 − P)/P) · (y/t)`
- * - > 182 days: the Treasury's quadratic —
+ * - ≤ 183 days (one half-year): simple — `((100 − P)/P) · (y/t)`
+ * - > 183 days: the Treasury's quadratic —
  *   solves `P · (1 + (t − y/2)/y · i) · (1 + i/2) = 100`
  */
 export function bondEquivalentYieldFromDays(
@@ -137,19 +154,41 @@ export function bondEquivalentYieldFromDays(
 ): number {
   checkPrice(price);
   checkDays(days);
-  if (basis !== 365 && basis !== 366) {
-    throw new RangeError(`basis must be 365 or 366, got ${basis}`);
-  }
+  checkBasis(basis);
   const y = basis;
-  if (days <= 182) {
+  if (days <= HALF_YEAR_DAYS) {
     return ((100 - price) / price) * (y / days);
   }
-  // P(1 + ((t − y/2)/y)·i)(1 + i/2) = 100, expanded to a·i² + b·i + c = 0
+  // P(1 + ((t − y/2)/y)·i)(1 + i/2) = 100, expanded to a·i² + b·i + c = 0.
+  // Solved in the numerically stable form i = −2c / (b + √(b² − 4ac)), which
+  // avoids cancellation when a is small (t just past half a year).
   const k = (days - y / 2) / y;
   const a = k / 2;
   const b = k + 0.5;
   const c = 1 - 100 / price;
-  return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  return (-2 * c) / (b + Math.sqrt(b * b - 4 * a * c));
+}
+
+/**
+ * Price per $100 from a bond-equivalent yield (the inverse of
+ * {@link bondEquivalentYieldFromDays}).
+ *
+ * ```ts
+ * priceFromBondEquivalentYield(0.04032, 364, 365); // ≈ 96.0971
+ * ```
+ */
+export function priceFromBondEquivalentYield(
+  bey: number,
+  days: number,
+  basis: 365 | 366 = 365,
+): number {
+  checkRate(bey, "bey");
+  checkDays(days);
+  checkBasis(basis);
+  const y = basis;
+  if (days <= HALF_YEAR_DAYS) return 100 / (1 + (bey * days) / y);
+  const k = (days - y / 2) / y;
+  return 100 / ((1 + k * bey) * (1 + bey / 2));
 }
 
 export interface BillYieldParams {

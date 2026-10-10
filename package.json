@@ -1,6 +1,6 @@
 {
   "name": "treasury-bill-yield",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "US Treasury bill yield math — discount rate ↔ price ↔ bond-equivalent yield (investment rate), money-market yield. Treasury's own formulas incl. the half-year (>183-day) quadratic and Feb-29 year basis. Zero dependencies.",
   "keywords": [
     "tbill",
